@@ -16,6 +16,7 @@ echo $files >> mid1_6_cleaning_data.txt
 
 for file in $files
 do
+	echo ""
 	echo "working on $file"
 
 	# extract file name string 
@@ -43,8 +44,6 @@ do
 	echo "-tag3 ${adapter_array[0]}" >> mid1_6_cleaning_data.txt
 	echo "-tag5 ${adapter_array[1]}" >> mid1_6_cleaning_data.txt
 	echo "Percent of nucleotides trimmed $delta2 %" >> mid1_6_cleaning_data.txt
-	
-	exit
 
 	# trim edges 
 	left_clip=10
@@ -54,9 +53,9 @@ do
 	echo "Left clip: $left_clip"
 	echo "Right clip: $right_clip"
 	filename_out2=$filename$vector_trim$adapter_trim$trim_edge$fastq
-	trim_edges -l $left_clip -r $right_clip -o $filename_out2 $filename_out1
+	trim_edges -l $left_clip -r $right_clip -o $filename_out2 $filename_out1$fastq
 
-	num_nuc_start3=$(sed -n 2~4p $filename_out1 | tr -d '\n' | wc -m)
+	num_nuc_start3=$(sed -n 2~4p $filename_out1$fastq | tr -d '\n' | wc -m)
 	num_nuc_end3=$(sed -n 2~4p $filename_out2 | tr -d '\n' | wc -m)
 	delta3=$(bc <<< "scale = 2; (1-($num_nuc_end3/$num_nuc_start3))*100")
 	echo "Percent of nucleotides trimmed using edge clipping: ~ $delta3 %" >> mid1_6_cleaning_data.txt
@@ -66,7 +65,7 @@ do
 	vector_trim="_VF"
 	filtered_out_file="_filtered_out_seqs.fastq"
 	filter_id=95
-	filter_by_blast -b vectors_454.fasta -e $filename$filtered_out_file -s $filter_id -o $filename$vector_trim$fastq $filename$fastq
+	filter_by_blast -b vectors_454.fasta -e $filename$filtered_out_file -s $filter_id -o $filename$vector_trim$fastq $filename_out2
 	
 	# Write how much was filtered
 	echo "Filtering by blast stats for: $filename.sff" >> mid1_6_cleaning_data.txt
@@ -84,42 +83,43 @@ do
 	quality_clip="_QC"
 	echo "Quality threshold: $quality_thresh" >> mid1_6_cleaning_data.txt
 	filename_out3=$filename$vector_trim$adapter_trim$trim_edge$quality_clip$fastq
-	trim_quality -q $quality_thresh -o $filename_out3 $filename_out2
+	trim_quality -q $quality_thresh -o $filename_out3 $filename$vector_trim$fastq
 
-	num_nuc_start4=$(sed -n 2~4p $filename_out2 | tr -d '\n' | wc -m)
+	num_nuc_start4=$(sed -n 2~4p $filename$vector_trim$fastq | tr -d '\n' | wc -m)
 	num_nuc_end4=$(sed -n 2~4p $filename_out3 | tr -d '\n' | wc -m)
 	delta4=$(bc <<< "scale = 2; (1-($num_nuc_end4/$num_nuc_start4))*100")
 	echo "Percent of nucleotides trimmed using quality clipping: $delta4 %" >> mid1_6_cleaning_data.txt
 
-	
 	# assembly with Spades
 	echo "assembling with Spades"
 	out_file="~/Data/mids_all/cleaned_mids/Spades_output_trimmed_careful_"
 	if (("$filename" == "mid_MID6"));
 	then	
-	spades.py --trusted-contigs ~/Desktop/Spades_run/trust.fasta -m 10 -t 16 --careful --s1 $filename_out3 -o $out_file$filename_out
+	spades.py --trusted-contigs ~/Desktop/Spades_run/trust.fasta -m 10 -t 16 --careful --s1 $filename_out3 -o $out_file$filename
 
 	else
 	spades.py -m 10 -t 16 --careful --s1 $filename_out3 -o $out_file$filename
 	fi 
 	
 	# Pull out assemby info 
-	cd $out_file$filename 
-	contig_stats=($(cat contigs.fasta |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'))
-	numb_contigs=($(cat contigs.fasta |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'| cut -f 1 | tail -n 1))
-	largest_contig=($(cat contigs.fasta |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'| cut -f 2 | head -n 1))
-	cd ..
-	
+	#cd $out_file$filename 
+	contigs="/contigs.fasta"
+	contigs_file=$out_file$filename$contigs
+	contig_stats=($(cat $contigs_file |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'))
+	numb_contigs=($(cat $contigs_file |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'| cut -f 1 | tail -n 1))
+	largest_contig=($( cat $contigs_file |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'| cut -f 2 | head -n 1))
+		
 	#write contig stats to file 
 	echo "Contig stats for $filename_out3 assembly" >> mid1_6_cleaning_data.txt
-	echo "Total contigs: $numb_contigs"
-	echo "Largest contig: $largest_contig"
+	echo "Total contigs: $numb_contigs" >> mid1_6_cleaning_data.txt
+	echo "Largest contig: $largest_contig" >> mid1_6_cleaning_data.txt
+	echo
+	echo "#-------------------------------------------------------------------------------#"
+
 	assembly_data="_Asm_Data.tsv"
 	echo "Contig_num	Contig_len	Contig_cov" > $filename$vector_trim$adapter_trim$trim_edge$quality_clip$assembly_data
-	echo $contig_stats >> $filename$vector_trim$adapter_trim$trim_edge$quality_clip$assembly_data
-	
-
-echo "done with $file.sff"
+	echo "$contig_stats >> $filename$vector_trim$adapter_trim$trim_edge$quality_clip$assembly_data"
+	echo "done with $file.sff"
 done
 
 
