@@ -95,19 +95,30 @@ do
 	# assembly with Spades
 	echo "assembling with Spades"
 	out_file="~/Data/mids_all/cleaned_mids/Spades_output_trimmed_careful_"
-	if [ "$filename" == "mid_MID6" ];
+	if (("$filename" == "mid_MID6"));
 	then	
-
 	spades.py --trusted-contigs ~/Desktop/Spades_run/trust.fasta -m 10 -t 16 --careful --s1 $filename_out3 -o $out_file$filename_out
 
 	else
 	spades.py -m 10 -t 16 --careful --s1 $filename_out3 -o $out_file$filename
 	fi 
 	
-	echo "Contig stats for $filename_out3 assembly" >> mid1_6_cleaning_data.txt
+	# Pull out assemby info 
 	cd $out_file$filename 
-	contig_stats=$(cat  
+	contig_stats=($(cat contigs.fasta |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'))
+	numb_contigs=($(cat contigs.fasta |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'| cut -f 1 | tail -n 1))
+	largest_contig=($(cat contigs.fasta |grep ">" | sed -E 's/>NODE_([0-9]+)_length_([0-9]+)_cov_([0-9]+)/\1\t\2\t\3/'| cut -f 2 | head -n 1))
 	cd ..
+	
+	#write contig stats to file 
+	echo "Contig stats for $filename_out3 assembly" >> mid1_6_cleaning_data.txt
+	echo "Total contigs: $numb_contigs"
+	echo "Largest contig: $largest_contig"
+	assembly_data="_Asm_Data.tsv"
+	echo "Contig_num	Contig_len	Contig_cov" > $filename$vector_trim$adapter_trim$trim_edge$quality_clip$assembly_data
+	echo $contig_stats >> $filename$vector_trim$adapter_trim$trim_edge$quality_clip$assembly_data
+	
+
 echo "done with $file.sff"
 done
 
