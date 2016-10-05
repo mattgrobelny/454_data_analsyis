@@ -49,7 +49,7 @@ do
 
 	# trim edges 
 	left_clip=30
-	right_clip=10
+	right_clip=20
 	trim_edge="_TE"
 	echo "Clipping edges..." 
 	echo "Left clip: $left_clip"
@@ -62,11 +62,13 @@ do
 	delta3=$(bc <<< "scale = 2; (1-($num_nuc_end3/$num_nuc_start3))*100")
 	echo "Percent of nucleotides trimmed using edge clipping: ~ $delta3 %" >> mid1_6_cleaning_data.txt
 	echo "	" >> mid1_6_cleaning_data.txt
+	
 	# filter by blast 
 	echo "filtering by blast "
 	vector_trim="_VF"
 	filtered_out_file="_filtered_out_seqs.fastq"
-	filter_id=95
+	filter_id=98
+	echo "Filtering with $filter_id % id" >> mid1_6_cleaning_data.txt
 	filter_by_blast -b vectors_454.fasta -e $filename$filtered_out_file -s $filter_id -o $filename$adapter_trim$trim_edge$vector_trim$fastq $filename_out2
 
 	# Write how much was filtered
@@ -76,12 +78,12 @@ do
 	after_filter=$(grep -c "^@I" $filename$adapter_trim$trim_edge$vector_trim$fastq)
 	echo "After filtering: $after_filter" >> mid1_6_cleaning_data.txt
 	delta=$(bc <<< "scale = 2; $start_num-$after_filter")
-	echo "Num of reads filtered out: $delta"
+	echo "Num of reads filtered out: $delta" >> mid1_6_cleaning_data.txt
 	echo "	" >> mid1_6_cleaning_data.txt
 	
 	# trim by quality
 	echo "Trimming by quality..."
-	quality_thresh=20
+	quality_thresh=15
 	quality_clip="_QC"
 	echo "Quality threshold: $quality_thresh" >> mid1_6_cleaning_data.txt
 	filename_out3=$filename$adapter_trim$trim_edge$vector_trim$quality_clip$fastq
