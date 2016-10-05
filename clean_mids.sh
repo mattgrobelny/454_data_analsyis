@@ -32,13 +32,16 @@ do
 	# trim adapters 
 	echo "Trimming adapters..." 
 	adapter_trim="_AT"
-	filename_out1=$filename$vector_trim$adapter_trim$fastq
+	filename_out1=$filename$vector_trim$adapter_trim
 	adapter_array=($(tagcleaner -predict -fastq mid_MID1.fastq | sed -E "1d; s/tag.\t([ATGCN]+)\t.+\t.+/\1\n/"))
-	tagcleaner -tag3 ${adapter_array[0]} -tag5 ${adapter_array[1]} -out $filename_out1 -fastq $filename$fastq
+	tagcleaner -tag3 ${adapter_array[0]} -tag5 ${adapter_array[1]} -out_format 3 -out $filename_out1 -fastq $filename$fastq
 
-	num_nuc_start2=$(sed -n 2~4p $filename_out1 | tr -d '\n' | wc -m)
-	num_nuc_end2=$(sed -n 2~4p $filename$fastq | tr -d '\n' | wc -m)
+	num_nuc_end2=$(sed -n 2~4p $filename$vector_trim$adapter_trim$fastq | tr -d '\n' | wc -m)
+	num_nuc_start2=$(sed -n 2~4p $filename$fastq | tr -d '\n' | wc -m)
 	delta2=$(bc <<< "scale = 2; (1-($num_nuc_end2/$num_nuc_start2))*100")
+	echo "Tags used for $file:" >> mid1_6_cleaning_data.txt
+	echo "-tag3 ${adapter_array[0]}" >> mid1_6_cleaning_data.txt
+	echo "-tag5 ${adapter_array[1]}" >> mid1_6_cleaning_data.txt
 	echo "Percent of nucleotides trimmed $delta2 %" >> mid1_6_cleaning_data.txt
 	
 	exit
@@ -100,10 +103,14 @@ do
 	else
 	spades.py -m 10 -t 16 --careful --s1 $filename_out3 -o $out_file$filename
 	fi 
+	
+	echo "Contig stats for $filename_out3 assembly" >> mid1_6_cleaning_data.txt
+	cd $out_file$filename 
+	contig_stats=$(cat  
+	cd ..
 echo "done with $file.sff"
 done
 
-tagcleaner -tag3 NNNNNNNNNNNNNNNGGGGATAGG -tag5 TCAGACGAGTGCGTAGATGTGTATAAGAGACA -fastq mid_MID1_no_clipping.fastq
 
 
 
